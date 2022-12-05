@@ -10,6 +10,7 @@ import ru.qmbo.mc3.model.Message;
 import ru.qmbo.mc3.service.MessageSendService;
 
 import java.util.Date;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * KafkaMessageController
@@ -23,6 +24,7 @@ import java.util.Date;
 public class KafkaMessageController {
 
     private final MessageSendService messageSendService;
+    private CountDownLatch latch = new CountDownLatch(1);
 
     /**
      * Instantiates a new Kafka message controller.
@@ -41,12 +43,17 @@ public class KafkaMessageController {
     @KafkaListener(topics = {"cycle-message"})
     public void getMessage(ConsumerRecord<Integer, String> input) {
         try {
-        Date date = new Date(System.currentTimeMillis());
-        ObjectMapper objectMapper = new ObjectMapper();
-        Message message = objectMapper.readValue(input.value(), Message.class);
-        this.messageSendService.send(message.setMc3Timestamp(date));
+            Date date = new Date(System.currentTimeMillis());
+            ObjectMapper objectMapper = new ObjectMapper();
+            Message message = objectMapper.readValue(input.value(), Message.class);
+            this.messageSendService.send(message.setMc3Timestamp(date));
+            latch.countDown();
         } catch (JsonProcessingException e) {
             log.error("String to Message parse fail.");
         }
+    }
+
+    public CountDownLatch getLatch() {
+        return latch;
     }
 }
